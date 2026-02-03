@@ -1,192 +1,233 @@
-# Launch EC3 using AWS
+# EC2 instance using Terraform
 
-Launch EC2 Instance Manually (With VPC, Subnet & Key Pair)
+🚀 Launch EC2 Instance Using Terraform (With VPC & Key Pair)
+📌 Project Overview
 
-1️⃣ Login & Select Region
+This project demonstrates how to provision an AWS EC2 instance using Terraform, including:
 
-Login to AWS Management Console
+Custom VPC
 
-Select a region
-👉 Example: ap-south-1 (Mumbai)
+Public Subnet
 
-2️⃣ Create a Custom VPC
-Step 2.1: Go to VPC Service
+Internet Gateway
 
-Search VPC → Click Your VPCs
+Route Table
 
-Click Create VPC
+Security Group
 
-Step 2.2: Configure VPC
-Setting	Value
-Name	my-vpc
-IPv4 CIDR	10.0.0.0/16
-Tenancy	Default
+Key Pair
 
-Click Create VPC
+EC2 Instance
 
-3️⃣ Create a Public Subnet
-Step 3.1: Subnet Settings
+The goal is to understand Infrastructure as Code (IaC) and automate AWS infrastructure deployment.
 
-Go to Subnets → Create subnet
+🛠️ Technologies Used
 
-Select my-vpc
+AWS EC2
 
-Setting	Value
-Subnet name	public-subnet
-AZ	ap-south-1a
-CIDR	10.0.1.0/24
+AWS VPC
 
-Click Create subnet
+Terraform
 
-4️⃣ Create and Attach Internet Gateway
-Step 4.1: Create IGW
+AWS IAM
 
-Go to Internet Gateways
+Amazon Linux 2023
 
-Click Create internet gateway
+📋 Prerequisites
 
-Name: my-igw
+Before starting, ensure you have:
 
-Step 4.2: Attach IGW to VPC
+AWS Account
 
-Select my-igw
+IAM user with:
 
-Click Actions → Attach to VPC
+AmazonEC2FullAccess
 
-Choose my-vpc
+AmazonVPCFullAccess
 
-5️⃣ Create Route Table for Public Access
-Step 5.1: Create Route Table
+AWS CLI installed & configured
 
-Go to Route Tables
+Terraform installed
 
-Click Create route table
+SSH key pair (.pem or .pub file)
 
-Name: public-rt
+Verify Terraform:
 
-VPC: my-vpc
+terraform -v
 
-Step 5.2: Add Route to Internet
+🔐 Configure AWS Credentials
+aws configure
 
-Select public-rt
 
-Click Edit routes
+Provide:
 
-Add:
+AWS Access Key
 
-Destination: 0.0.0.0/0
+AWS Secret Key
 
-Target: Internet Gateway (my-igw)
+Default Region (e.g. ap-south-1)
 
-Save
+Output format: json
 
-Step 5.3: Associate Route Table
+📁 Project Structure
+terraform-ec2-vpc/
+│
+├── provider.tf
+├── vpc.tf
+├── subnet.tf
+├── internet_gateway.tf
+├── route_table.tf
+├── security_group.tf
+├── ec2.tf
+└── keypair.tf (optional)
 
-Go to Subnet associations
+🌐 Infrastructure Components
+1️⃣ Provider Configuration
+provider "aws" {
+  region = "ap-south-1"
+}
 
-Edit → Select public-subnet
+2️⃣ Create VPC
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
 
-Save
+  tags = {
+    Name = "tf-vpc"
+  }
+}
 
-6️⃣ Create Key Pair (For SSH Access)
+3️⃣ Create Public Subnet
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "ap-south-1a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "tf-public-subnet"
+  }
+}
+
+4️⃣ Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "tf-igw"
+  }
+}
+
+5️⃣ Route Table
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+}
+
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+6️⃣ Security Group
+resource "aws_security_group" "ec2_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["YOUR_IP/32"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+7️⃣ Key Pair
+resource "aws_key_pair" "key" {
+  key_name   = "tf-key"
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
+8️⃣ EC2 Instance
+resource "aws_instance" "web" {
+  ami                    = "ami-0f5ee92e2d63afc18"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+  key_name               = aws_key_pair.key.key_name
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install httpd -y
+              systemctl start httpd
+              systemctl enable httpd
+              EOF
+
+  tags = {
+    Name = "tf-ec2-instance"
+  }
+}
+
+🚀 Deploy Infrastructure
+Initialize Terraform
+terraform init
+
+Validate
+terraform validate
+
+Plan
+terraform plan
+
+Apply
+terraform apply
+
+
+Type yes to confirm.
+
+🔗 Access EC2 Instance
+chmod 400 tf-key.pem
+ssh -i tf-key.pem ec2-user@<PUBLIC-IP>
 
-Go to EC2 → Key Pairs
-
-Click Create key pair
-
-Name: ec2-key
-
-Type: RSA
-
-Format: .pem
-
-Click Create
-
-⚠️ Download & store securely — cannot be re-downloaded
-
-7️⃣ Create Security Group
-Step 7.1: Security Group Rules
-
-Go to Security Groups
-
-Click Create security group
-
-Rule	Port	Source
-SSH	22	My IP
-HTTP	80	0.0.0.0/0
-
-VPC: my-vpc
-
-Click Create security group
-
-8️⃣ Launch EC2 Instance
-Step 8.1: Choose AMI
-
-Amazon Linux 2023 (Free Tier eligible)
-
-Step 8.2: Instance Type
-
-t2.micro
-
-9️⃣ Configure Networking (VERY IMPORTANT)
-Setting	Value
-VPC	my-vpc
-Subnet	public-subnet
-Auto-assign Public IP	Enable
-Security Group	ec2-sg
-Key Pair	ec2-key
-🔟 Configure Storage
-
-Default 8 GB gp3 → OK
-
-1️⃣1️⃣ (Optional) User Data Script
-#!/bin/bash
-yum update -y
-yum install httpd -y
-systemctl start httpd
-systemctl enable httpd
-
-1️⃣2️⃣ Launch Instance
-
-Click Launch instance
-
-Instance state → Running 🎉
-
-1️⃣3️⃣ Verify VPC Connectivity
-Check:
-
-Instance has Public IPv4
-
-Route table has IGW route
-
-Security group allows SSH/HTTP
-
-1️⃣4️⃣ Connect to EC2 via SSH
-chmod 400 ec2-key.pem
-ssh -i ec2-key.pem ec2-user@<PUBLIC-IP>
-
-1️⃣5️⃣ Test Application
 
 Open browser:
 
 http://<PUBLIC-IP>
 
-🔐 Best Practices (Interview Gold ✨)
+🧹 Destroy Resources (Important)
+terraform destroy
 
-Use private subnets for databases
+📘 What We Learn From This Project
 
-Use NAT Gateway for outbound internet
+How to use Terraform for AWS automation
 
-Never expose SSH to 0.0.0.0/0
+How VPC networking works
 
-Use IAM Roles, not access keys
+How EC2 connects to the internet
 
-🧠 What You Learn From This
+Secure access using key pairs.
 
-How EC2 connects to a VPC
+✅ Conclusion
 
-How public internet access works
+This project demonstrates how Infrastructure as Code (IaC) simplifies cloud deployments by making infrastructure repeatable, version-controlled, and automated. Using Terraform with AWS allows teams to deploy scalable and secure cloud environments efficiently while reducing manual errors.
 
-How key pairs enable secure login
 
-How AWS networking components interact
+Infrastructure lifecycle management
+
+Cost control using terraform destroy
