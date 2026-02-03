@@ -1,198 +1,192 @@
-# Task-3
-AWS Core Services – Overview Report
-1. Introduction
+# Launch EC3 using AWS
 
-Amazon Web Services (AWS) is a leading cloud computing platform that provides on-demand access to computing resources such as servers, storage, databases, and networking.
-This report covers core AWS services, explaining their purpose, key features, and how they work together to build scalable, secure, and cost-efficient cloud solutions.
+Launch EC2 Instance Manually (With VPC, Subnet & Key Pair)
 
-2. What is Cloud Computing?
+1️⃣ Login & Select Region
 
-Cloud computing is the delivery of computing services over the internet, allowing users to:
+Login to AWS Management Console
 
-Avoid upfront infrastructure costs
+Select a region
+👉 Example: ap-south-1 (Mumbai)
 
-Scale resources on demand
+2️⃣ Create a Custom VPC
+Step 2.1: Go to VPC Service
 
-Pay only for what they use
+Search VPC → Click Your VPCs
 
-Cloud Service Models
+Click Create VPC
 
-IaaS (Infrastructure as a Service) – EC2, EBS
+Step 2.2: Configure VPC
+Setting	Value
+Name	my-vpc
+IPv4 CIDR	10.0.0.0/16
+Tenancy	Default
 
-PaaS (Platform as a Service) – Elastic Beanstalk
+Click Create VPC
 
-SaaS (Software as a Service) – AWS-hosted applications
+3️⃣ Create a Public Subnet
+Step 3.1: Subnet Settings
 
-3. Core AWS Services Overview
-3.1 Compute Services
+Go to Subnets → Create subnet
 
-Compute services provide processing power to run applications.
+Select my-vpc
 
-Amazon EC2 (Elastic Compute Cloud)
+Setting	Value
+Subnet name	public-subnet
+AZ	ap-south-1a
+CIDR	10.0.1.0/24
 
-Virtual servers in the cloud
+Click Create subnet
 
-Multiple instance types for different workloads
+4️⃣ Create and Attach Internet Gateway
+Step 4.1: Create IGW
 
-Supports Auto Scaling and Load Balancing
+Go to Internet Gateways
 
-AWS Lambda
+Click Create internet gateway
 
-Serverless compute service
+Name: my-igw
 
-Runs code without managing servers
+Step 4.2: Attach IGW to VPC
 
-Charged only for execution time
+Select my-igw
 
-Use Case: Hosting backend APIs, automation tasks, event-driven applications
+Click Actions → Attach to VPC
 
-3.2 Storage Services
+Choose my-vpc
 
-Storage services store data securely and reliably.
+5️⃣ Create Route Table for Public Access
+Step 5.1: Create Route Table
 
-Amazon S3 (Simple Storage Service)
+Go to Route Tables
 
-Object storage for files, images, and backups
+Click Create route table
 
-Highly durable and scalable
+Name: public-rt
 
-Supports versioning and lifecycle policies
+VPC: my-vpc
 
-Amazon EBS (Elastic Block Store)
+Step 5.2: Add Route to Internet
 
-Block storage for EC2 instances
+Select public-rt
 
-Used for OS disks and databases
+Click Edit routes
 
-Use Case: Application data storage, backups, static website hosting
+Add:
 
-3.3 Database Services
+Destination: 0.0.0.0/0
 
-Database services manage structured and unstructured data.
+Target: Internet Gateway (my-igw)
 
-Amazon RDS (Relational Database Service)
+Save
 
-Managed relational databases (MySQL, PostgreSQL, Oracle)
+Step 5.3: Associate Route Table
 
-Automated backups and patching
+Go to Subnet associations
 
-Amazon DynamoDB
+Edit → Select public-subnet
 
-Fully managed NoSQL database
+Save
 
-High performance and low latency
+6️⃣ Create Key Pair (For SSH Access)
 
-Use Case: Application databases, real-time data storage
+Go to EC2 → Key Pairs
 
-3.4 Networking Services
+Click Create key pair
 
-Networking services control traffic flow and connectivity.
+Name: ec2-key
 
-Amazon VPC (Virtual Private Cloud)
+Type: RSA
 
-Isolated network environment
+Format: .pem
 
-Control IP ranges, subnets, and routing
+Click Create
 
-Elastic Load Balancer (ELB)
+⚠️ Download & store securely — cannot be re-downloaded
 
-Distributes traffic across multiple EC2 instances
+7️⃣ Create Security Group
+Step 7.1: Security Group Rules
 
-Improves availability and fault tolerance
+Go to Security Groups
 
-Use Case: Secure networking and traffic management
+Click Create security group
 
-3.5 Security & Identity Services
+Rule	Port	Source
+SSH	22	My IP
+HTTP	80	0.0.0.0/0
 
-Security services manage access and protect resources.
+VPC: my-vpc
 
-AWS IAM (Identity and Access Management)
+Click Create security group
 
-Manage users, roles, and permissions
+8️⃣ Launch EC2 Instance
+Step 8.1: Choose AMI
 
-Enforces least-privilege access
+Amazon Linux 2023 (Free Tier eligible)
 
-AWS Security Groups
+Step 8.2: Instance Type
 
-Virtual firewalls for EC2 instances
+t2.micro
 
-Control inbound and outbound traffic
+9️⃣ Configure Networking (VERY IMPORTANT)
+Setting	Value
+VPC	my-vpc
+Subnet	public-subnet
+Auto-assign Public IP	Enable
+Security Group	ec2-sg
+Key Pair	ec2-key
+🔟 Configure Storage
 
-Use Case: Access control and infrastructure security
+Default 8 GB gp3 → OK
 
-3.6 Monitoring & Management Services
+1️⃣1️⃣ (Optional) User Data Script
+#!/bin/bash
+yum update -y
+yum install httpd -y
+systemctl start httpd
+systemctl enable httpd
 
-Monitoring services help observe and manage AWS resources.
+1️⃣2️⃣ Launch Instance
 
-Amazon CloudWatch
+Click Launch instance
 
-Collects logs and metrics
+Instance state → Running 🎉
 
-Enables alarms and automated actions
+1️⃣3️⃣ Verify VPC Connectivity
+Check:
 
-AWS CloudTrail
+Instance has Public IPv4
 
-Tracks API calls and user activity
+Route table has IGW route
 
-Useful for auditing and compliance
+Security group allows SSH/HTTP
 
-Use Case: System monitoring, debugging, and auditing
+1️⃣4️⃣ Connect to EC2 via SSH
+chmod 400 ec2-key.pem
+ssh -i ec2-key.pem ec2-user@<PUBLIC-IP>
 
-4. How AWS Core Services Work Together
+1️⃣5️⃣ Test Application
 
-AWS services are designed to integrate seamlessly:
+Open browser:
 
-EC2 hosts applications
+http://<PUBLIC-IP>
 
-S3 stores application data and backups
+🔐 Best Practices (Interview Gold ✨)
 
-RDS manages databases
+Use private subnets for databases
 
-VPC secures network communication
+Use NAT Gateway for outbound internet
 
-IAM controls access
+Never expose SSH to 0.0.0.0/0
 
-CloudWatch monitors performance
+Use IAM Roles, not access keys
 
-This integration enables high availability, scalability, and security.
+🧠 What You Learn From This
 
-5. Advantages of Using AWS Core Services
+How EC2 connects to a VPC
 
-Scalability: Easily scale resources up or down
+How public internet access works
 
-Cost Optimization: Pay-as-you-go pricing
+How key pairs enable secure login
 
-High Availability: Global infrastructure
-
-Security: Built-in security best practices
-
-Automation: Infrastructure can be managed using code
-
-6. Real-World Use Cases
-
-Hosting web and mobile applications
-
-CI/CD pipelines for DevOps
-
-Data backup and disaster recovery
-
-Serverless applications
-
-Monitoring and logging systems
-
-7. Conclusion & Key Learnings
-Conclusion
-
-AWS Core services form the foundation of cloud computing by providing reliable, scalable, and secure infrastructure. By combining compute, storage, networking, security, and monitoring services, AWS enables organizations to build modern cloud-native applications efficiently.
-
-What We Learn from AWS Core Services
-
-How cloud infrastructure replaces traditional data centers
-
-Importance of scalability and fault tolerance
-
-How security and access control are managed in the cloud
-
-How automation and monitoring improve reliability
-
-How cost optimization is achieved using pay-as-you-go models
+How AWS networking components interact
